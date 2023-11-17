@@ -36,7 +36,7 @@ def getTitleAndPrice(soup):
     return {'title': title, 'price': price}
     
 def getIconicData(soup):
-    miles_raw_text = ""
+    miles = ""
     css_icons = soup.find_all('i', {'data-visualcompletion': 'css-img'})
     for icon in css_icons:
         icon_styles = icon['style']
@@ -47,7 +47,8 @@ def getIconicData(soup):
             
             miles_el = milage_icon_sec_parent.find('span')
             miles_raw_text = miles_el.text
-            return miles_raw_text
+            miles = miles_raw_text.partition(' ')[2]
+            return miles
         
     return miles_raw_text
 
@@ -69,16 +70,18 @@ def getSellerDetails(soup):
     return seller
     
 def initBrowser():  
-    browser_dir = os.getcwd() + '\\session'
+    #browser_dir = os.getcwd() + '\\session' #windows path
+    browser_dir = os.path.expanduser("~/Desktop/Developer/FB Marketplace Scraper/session") #mac path
     options = Options()
     options.add_argument(f"--user-data-dir={browser_dir}")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    driver.set_window_size(1600, 900)
+    #driver.set_window_size(1600, 900)
+    driver.set_window_size(1200, 700)
     driver.get('https://www.facebook.com/marketplace/category/vehicles?maxMileage=1000000&maxYear=2023&minMileage=1&minYear=2017&sortBy=creation_time_descend&exact=false')
     wait = WebDriverWait(driver, 60)
     return driver
 
-def scrapeSearchResult(driver):
+def getSearchResult(driver):
     main_tab = driver.window_handles[0]
     driver.execute_script("window.open('about:blank', 'tab2');")
     sec_tab = driver.window_handles[1]
@@ -161,12 +164,23 @@ def getListingDetails(driver, link):
     except:
         description = ""
         
-    print(description)
+    # print(description)
     
     image_elements = driver.find_elements(By.CSS_SELECTOR, 'img.x5yr21d.xl1xv1r.xh8yej3')
     images = [elem.get_attribute('src') for elem in image_elements]
+    images_str = '|'.join(images)
     # print(images)
 
+    return [link, titleAndPrice['title'], titleAndPrice['price'], millage, description, images_str, sellerDetails['name'], sellerDetails['contact']]
+
+
+driver = initBrowser()
+listing_list = getSearchResult(driver)
+for listing in listing_list:
+    data_row = getListingDetails(driver, listing)
+    with open('output.csv', 'a', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(data_row)
 
 
 driver.quit()
